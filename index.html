@@ -863,7 +863,7 @@ const SK={
   chtpls:'dl_ch_v1',theme:'dl_th_v1',gist:'dl_gs_v1',
   txns:'wl_txns_v1',budgets:'wl_budgets_v1',splits:'wl_splits_v1',
   subjects:'sc_subjects_v1',docs:'sc_docs_v1',readlog:'sc_read_v1',
-  exams:'sc_exams_v1',fs:'dl_fs',kuralOn:'dl_kural'
+  exams:'sc_exams_v1',th:'dl_th_v1',fs:'dl_fs',kuralOn:'dl_kural'
 };
 let blocks={},tasks=[],reviews={},cats=[],chtpls=[],exams=[],userName='',
     txns=[],budgets=[],splits=[],
@@ -1973,10 +1973,10 @@ function addExam(){
   exams.push({id:Date.now(),name,date,emoji:document.getElementById('sc-ex-emoji').value.trim()||'📝',notes:document.getElementById('sc-ex-notes').value.trim()});
   sv(SK.exams,exams);
   ['sc-ex-name','sc-ex-date','sc-ex-emoji','sc-ex-notes'].forEach(i=>{const el=document.getElementById(i);if(el)el.value=''});
-  renderExams();showToast('Exam added ✓');
+  renderProgressTracker();showToast('Exam added ✓');
 }
 
-function renderExams(){
+function renderProgressTracker(){
   const el=document.getElementById('sc-exam-countdown');if(!el)return;
   const now=new Date();now.setHours(0,0,0,0);
   const sorted=[...exams].sort((a,b)=>new Date(a.date)-new Date(b.date));
@@ -2016,7 +2016,52 @@ function renderExams(){
     </div>`;
   }).join('');
 }
-function delExam(id){hap('m');exams=exams.filter(e=>e.id!==id);sv(SK.exams,exams);renderExams();showToast('Removed')}
+function delExam(id){hap('m');exams=exams.filter(e=>e.id!==id);sv(SK.exams,exams);renderProgressTracker();showToast('Removed')}
+
+
+// ═══════════════════════════════════════════════════
+// FILE UPLOAD & READING LOG
+// ═══════════════════════════════════════════════════
+function handleFileUpload(files){
+  Array.from(files).forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      docs.push({id:Date.now()+Math.random(),name:f.name,type:f.type,size:f.size,data:e.target.result,uploaded:new Date().toISOString()});
+      sv(SK.docs,docs);renderDocs();showToast(f.name+' uploaded ✓');
+    };
+    reader.readAsDataURL(f);
+  });
+}
+function renderDocs(){
+  const el=document.getElementById('sc-doc-list');if(!el)return;
+  if(!docs.length){el.innerHTML='<div class="empty"><span class="empty-icon">📎</span>No files yet</div>';return;}
+  const icons={'application/pdf':'📄','application/vnd.openxmlformats-officedocument.wordprocessingml.document':'📝','text/plain':'📃'};
+  el.innerHTML=docs.map((d,i)=>'<div class="doc-item">'+
+    '<div class="doc-icon">'+(icons[d.type]||'📎')+'</div>'+
+    '<div class="doc-body"><div class="doc-name">'+d.name+'</div><div class="doc-meta">'+((d.size/1024).toFixed(1))+'KB</div></div>'+
+    '<a href="'+d.data+'" download="'+d.name+'" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:10px;font-weight:700;padding:4px 8px;text-decoration:none;margin-right:4px;flex-shrink:0">↓</a>'+
+    '<button class="doc-del" onclick="delDoc('+i+')">×</button>'+
+  '</div>').join('');
+}
+function delDoc(i){docs.splice(i,1);sv(SK.docs,docs);renderDocs();showToast('Removed');}
+function addReadLog(){
+  const title=document.getElementById('sc-rl-title')?.value.trim();if(!title){showToast('Enter title');return}
+  hap('s');
+  readlog.unshift({id:Date.now(),title,type:document.getElementById('sc-rl-type')?.value||'📚',subject:document.getElementById('sc-rl-sub')?.value.trim()||'',note:document.getElementById('sc-rl-note')?.value.trim()||'',date:dk(new Date())});
+  sv(SK.readlog,readlog);
+  ['sc-rl-title','sc-rl-sub','sc-rl-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderReadLog();showToast('Logged ✓');
+}
+function renderReadLog(){
+  const el=document.getElementById('sc-read-list');if(!el)return;
+  if(!readlog.length){el.innerHTML='<div class="empty"><span class="empty-icon">🧠</span>Nothing logged yet</div>';return;}
+  el.innerHTML=readlog.map((r,i)=>'<div class="read-item">'+
+    '<div class="read-badge">'+r.type+'</div>'+
+    '<div class="read-body"><div class="read-title">'+r.title+'</div><div class="read-meta">'+(r.subject?r.subject+' · ':'')+r.date+(r.note?'<br>'+r.note:'')+'</div></div>'+
+    '<button class="read-del" onclick="delRead('+i+')">×</button>'+
+  '</div>').join('');
+}
+function delRead(i){readlog.splice(i,1);sv(SK.readlog,readlog);renderReadLog();showToast('Removed');}
 
 // ═══════════════════════════════════════════════════
 // ENTER KEYS
@@ -2192,6 +2237,40 @@ function addCustomTpl(){
   const note=document.getElementById('set-tpl-note').value.trim();
   chtpls.push({label,hours,cat,note});
   sv(SK.chtpls,chtpls);renderSettings();showToast('Template added ✓');
+}
+
+// ═══════════════════════════════════════════════════
+// GIST SYNC
+// ═══════════════════════════════════════════════════
+async function gistSync(dir='push'){
+  if(!gist.token){showToast('Add GitHub token in Settings');return}
+  showToast(dir==='push'?'Syncing...':'Pulling...');
+  const headers={'Authorization':'token '+gist.token,'Content-Type':'application/json'};
+  const payload={blocks,tasks,reviews,cats,chtpls,txns,budgets,splits,subjects,exams,accounts,readlog};
+  try{
+    if(dir==='push'){
+      if(!gist.gistId){
+        const res=await fetch('https://api.github.com/gists',{method:'POST',headers,body:JSON.stringify({description:'suite sync',public:false,files:{'suite.json':{content:JSON.stringify(payload)}}})});
+        const data=await res.json();if(data.id){gist.gistId=data.id;sv(SK.gist,gist);}else throw new Error();
+      }else{
+        await fetch('https://api.github.com/gists/'+gist.gistId,{method:'PATCH',headers,body:JSON.stringify({files:{'suite.json':{content:JSON.stringify(payload)}}})});
+      }
+      showToast('Synced to GitHub ✓');
+    }else{
+      const res=await fetch('https://api.github.com/gists/'+gist.gistId,{headers});
+      if(!res.ok)throw new Error();
+      const data=await res.json();
+      const c=JSON.parse(data.files['suite.json'].content);
+      blocks=c.blocks||{};tasks=c.tasks||[];reviews=c.reviews||{};cats=c.cats||cats;
+      chtpls=c.chtpls||[];txns=c.txns||[];budgets=c.budgets||[];splits=c.splits||[];
+      subjects=c.subjects||[];exams=c.exams||[];accounts=c.accounts||accounts;readlog=c.readlog||[];
+      sv(SK.blocks,blocks);sv(SK.tasks,tasks);sv(SK.reviews,reviews);sv(SK.cats,cats);
+      sv(SK.chtpls,chtpls);sv(SK.txns,txns);sv(SK.budgets,budgets);sv(SK.splits,splits);
+      sv(SK.subjects,subjects);sv(SK.exams,exams);sv('wl_accounts_v1',accounts);sv(SK.readlog,readlog);
+      showToast('Pulled from GitHub ✓');
+      if(curApp)launchApp(curApp);
+    }
+  }catch(e){showToast('Sync failed — check token/ID')}
 }
 
 function exportAllData(){
