@@ -1966,46 +1966,6 @@ function addExam(){
   renderProgressTracker();showToast('Exam added ✓');
 }
 
-function renderProgressTracker(){
-  const el=document.getElementById('sc-exam-countdown');if(!el)return;
-  const now=new Date();now.setHours(0,0,0,0);
-  const sorted=[...exams].sort((a,b)=>new Date(a.date)-new Date(b.date));
-  if(!sorted.length){el.innerHTML=`<div class="empty"><span class="empty-icon">⏳</span>No exams added yet<br>add your exam schedule below</div>`;return}
-  el.innerHTML=sorted.map((ex,i)=>{
-    const examDate=new Date(ex.date);examDate.setHours(0,0,0,0);
-    const diff=Math.round((examDate-now)/(1000*60*60*24));
-    const isPast=diff<0,isToday=diff===0,isSoon=diff<=3&&diff>=0,isNear=diff<=7&&diff>3;
-    const color=isPast?'var(--muted)':isToday?'var(--danger)':isSoon?'var(--danger)':isNear?'var(--accent)':'var(--success)';
-    const label=isPast?`${Math.abs(diff)}d ago`:isToday?'TODAY!':diff===1?'TOMORROW':`${diff} days`;
-    // find matching subject for topic progress
-    const subj=subjects.find(s=>s.name.toLowerCase().includes(ex.name.toLowerCase().split(' ')[0]));
-    const topicsDone=subj?subj.topics.filter(t=>t.status==='done').length:0;
-    const topicsTotal=subj?subj.topics.length:0;
-    return`<div class="card" style="margin-bottom:10px;${isToday?'border-color:var(--danger)':''}">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:44px;height:44px;border-radius:12px;background:rgba(var(--accent-rgb),0.12);display:flex;align-items:center;justify-content:center;font-size:22px">${ex.emoji}</div>
-          <div>
-            <div style="font-size:15px;font-weight:700;color:var(--text)">${ex.name}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">${ex.date}</div>
-          </div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:22px;font-weight:800;color:${color};line-height:1">${label}</div>
-          ${!isPast?`<div style="font-size:10px;color:var(--muted);margin-top:2px;font-weight:600">${isToday?'good luck!':isSoon?'study hard!':isNear?'almost there':'you got time'}</div>`:''}
-        </div>
-      </div>
-      ${topicsTotal>0?`<div style="display:flex;align-items:center;gap:8px;margin-top:4px;margin-bottom:6px">
-        <div style="flex:1;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;border-radius:2px;background:${color};width:${Math.round(topicsDone/topicsTotal*100)}%;transition:width 0.5s"></div></div>
-        <div style="font-size:11px;font-weight:700;color:${color}">${topicsDone}/${topicsTotal} topics</div>
-      </div>`:''}
-      ${ex.notes?`<div style="font-size:12px;color:var(--muted);font-weight:500;margin-top:4px;padding-top:8px;border-top:1px solid var(--border)">${ex.notes}</div>`:''}
-      <div style="display:flex;justify-content:flex-end;margin-top:8px">
-        <button onclick="delExam(${ex.id})" style="background:none;border:none;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer">Remove</button>
-      </div>
-    </div>`;
-  }).join('');
-}
 function delExam(id){hap('m');exams=exams.filter(e=>e.id!==id);sv(SK.exams,exams);renderProgressTracker();showToast('Removed')}
 
 
