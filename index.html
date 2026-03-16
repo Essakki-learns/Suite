@@ -712,19 +712,10 @@ select option{background:var(--surface2)}
           </div>
         </div>
 
+        <!-- exams view: countdown + list only; no hardcoded Add exam card -->
         <div class="view" id="sc-v-exams">
           <div class="page">
             <div id="sc-exam-countdown"></div>
-            <div class="card" style="margin-top:4px">
-              <div class="card-title">Add exam</div>
-              <div class="form-row"><div class="ilabel">Subject</div><input type="text" id="sc-ex-name" placeholder="Data Structures & Algorithms"></div>
-              <div class="form-row g2">
-                <div><div class="ilabel">Exam date</div><input type="date" id="sc-ex-date"></div>
-                <div><div class="ilabel">Emoji</div><input type="text" id="sc-ex-emoji" placeholder="💻" style="width:60px"></div>
-              </div>
-              <div class="form-row"><div class="ilabel">Notes (syllabus, weightage...)</div><textarea id="sc-ex-notes" placeholder="Unit 1-3, focus on trees..."></textarea></div>
-              <button class="btn-p" style="margin-top:4px" onclick="addExam()">Add exam →</button>
-            </div>
           </div>
         </div>
 
@@ -855,6 +846,8 @@ select option{background:var(--surface2)}
 <div class="toast" id="toast"></div>
 
 <script>
+
+  
 // ═══════════════════════════════════════════════════
 // STORAGE
 // ═══════════════════════════════════════════════════
@@ -867,8 +860,9 @@ const SK={
 };
 let blocks={},tasks=[],reviews={},cats=[],chtpls=[],exams=[],userName='',
     txns=[],budgets=[],splits=[],
-    subjects=[],docs=[],readlog=[];
-let theme='brown',gist={token:'',gistId:''};
+    subjects=[],docs=[],readlog=[],
+    accounts=[],
+    theme='brown',gist={token:'',gistId:''};
 let vDate=new Date(),taskFilter='all',editHour=null,isBulk=false,selCat=null,
     selMode=false,selHours=new Set(),selRating=null,txnType='expense',selPMVal='UPI';
 let curApp=null,activeSubjectId=null;
@@ -882,6 +876,11 @@ function load(){
   subjects=g(SK.subjects,[]);docs=g(SK.docs,[]);readlog=g(SK.readlog,[]);
   gist=g(SK.gist,{token:'',gistId:''});
   exams=g(SK.exams,[]);
+  accounts = g('wl_accounts_v1', [
+    {id:'acc_cash',name:'Cash',emoji:'💵',color:'#52C47A',balance:0},
+    {id:'acc_upi', name:'UPI', emoji:'📱',color:'#60A5FA',balance:0},
+    {id:'acc_card',name:'Card',emoji:'💳',color:'#C084FC',balance:0},
+  ]);
   userName=localStorage.getItem('suite_name')||'';
   theme=localStorage.getItem(SK.th)||'brown';
 }
@@ -1476,18 +1475,9 @@ function renderHeatmap(){
 // ═══════════════════════════════════════════════════
 // WALLET
 // ═══════════════════════════════════════════════════
-let accounts=[], selAccId=null, wlCatFilter='all';
+let selAccId=null, wlCatFilter='all';
 
 function initWallet(){
-  try{accounts=JSON.parse(localStorage.getItem('wl_accounts_v1'))||[]}catch(e){accounts=[]}
-  if(!accounts.length){
-    accounts=[
-      {id:'acc_cash',name:'Cash',emoji:'💵',color:'#52C47A',balance:0},
-      {id:'acc_upi', name:'UPI', emoji:'📱',color:'#60A5FA',balance:0},
-      {id:'acc_card',name:'Card',emoji:'💳',color:'#C084FC',balance:0},
-    ];
-    sv('wl_accounts_v1',accounts);
-  }
   selAccId=accounts[0]?.id||null;
   const td=document.getElementById('txn-date');if(td)td.value=dk(new Date());
   const defPM=localStorage.getItem('suite_def_pm')||'UPI';
@@ -2263,7 +2253,7 @@ async function gistSync(dir='push'){
   if(!gist.token){showToast('Add GitHub token in Settings');return}
   showToast(dir==='push'?'Syncing...':'Pulling...');
   const headers={'Authorization':'token '+gist.token,'Content-Type':'application/json'};
-  const payload={blocks,tasks,reviews,cats,chtpls,txns,budgets,splits,subjects,exams,accounts,readlog};
+  const payload={blocks,tasks,reviews,cats,chtpls,txns,budgets,splits,subjects,exams,docs,accounts,readlog};
   try{
     if(dir==='push'){
       if(!gist.gistId){
@@ -2280,10 +2270,10 @@ async function gistSync(dir='push'){
       const c=JSON.parse(data.files['suite.json'].content);
       blocks=c.blocks||{};tasks=c.tasks||[];reviews=c.reviews||{};cats=c.cats||cats;
       chtpls=c.chtpls||[];txns=c.txns||[];budgets=c.budgets||[];splits=c.splits||[];
-      subjects=c.subjects||[];exams=c.exams||[];accounts=c.accounts||accounts;readlog=c.readlog||[];
+      subjects=c.subjects||[];exams=c.exams||[];docs=c.docs||[];accounts=c.accounts||accounts;readlog=c.readlog||[];
       sv(SK.blocks,blocks);sv(SK.tasks,tasks);sv(SK.reviews,reviews);sv(SK.cats,cats);
       sv(SK.chtpls,chtpls);sv(SK.txns,txns);sv(SK.budgets,budgets);sv(SK.splits,splits);
-      sv(SK.subjects,subjects);sv(SK.exams,exams);sv('wl_accounts_v1',accounts);sv(SK.readlog,readlog);
+      sv(SK.subjects,subjects);sv(SK.exams,exams);sv(SK.docs,docs);sv('wl_accounts_v1',accounts);sv(SK.readlog,readlog);
       showToast('Pulled from GitHub ✓');
       if(curApp)launchApp(curApp);
     }
