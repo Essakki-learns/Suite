@@ -2185,6 +2185,23 @@ function renderSettings(){
       }).join('')}
     </div>
 
+    <div class="slabel" style="margin-bottom:10px">GitHub Gist Sync</div>
+    <div class="card">
+      <p style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:10px">Sync all apps across devices via a private GitHub Gist. Get a token at github.com → Settings → Developer settings → Tokens (classic) → scope: <strong style="color:var(--text2)">gist</strong></p>
+      <div class="form-row">
+        <div class="ilabel">Personal Access Token</div>
+        <input type="text" placeholder="ghp_xxxxxxxxxxxx" value="${gist.token}" oninput="gist.token=this.value;sv(SK.gist,gist)" style="font-size:12px">
+      </div>
+      <div class="form-row">
+        <div class="ilabel">Gist ID (auto-filled after first push)</div>
+        <input type="text" placeholder="auto-created on first sync" value="${gist.gistId}" oninput="gist.gistId=this.value;sv(SK.gist,gist)" style="font-size:12px">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn-ghost" style="margin-top:0;flex:1" onclick="gistSync('push')">⬆ Push to GitHub</button>
+        <button class="btn-ghost" style="margin-top:0;flex:1" onclick="gistSync('pull')">⬇ Pull from GitHub</button>
+      </div>
+    </div>
+
     <div class="slabel" style="margin-bottom:10px">Data</div>
     <div class="card">
       <div id="storage-info" style="margin-bottom:10px"></div>
